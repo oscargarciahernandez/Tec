@@ -22,6 +22,7 @@ profile.set_preference('browser.download.manager.showWhenStarting', False)
 profile.set_preference('browser.download.dir', 'C:\titititit\Descargas')
 profile.set_preference('browser.helperApps.neverAsk.saveToDisk', 'application/zip')
 
+os.chdir('C:\\Users\\Oscar\\Documents\\Tec')
 path=os.getcwd()
 driver=webdriver.Firefox(profile)
 url= "https://www.electrobuzz.net/"
@@ -30,7 +31,7 @@ driver.get(url)
 pre_links= driver.find_elements_by_css_selector("div:nth-child(1) > h2:nth-child(2) > a:nth-child(1)")
 total_pags=driver.find_element_by_css_selector("a.page-numbers:nth-child(5)").get_attribute('text').replace(',','')
 
-pags=np.arange(0,int(total_pags),step=1)
+pags=np.arange(2,int(total_pags),step=1)
 links=['urls']
 
 for j in np.arange(0,len(pre_links),step=1):
@@ -38,24 +39,42 @@ for j in np.arange(0,len(pre_links),step=1):
   links.append(pre_links[j].get_attribute('href')) 
 
 
-vectores_pags<- chunks(pags,200)
 
-def electrobuzz(vector_pags):
-  profile = webdriver.FirefoxProfile()
-  profile.set_preference('browser.download.folderList', 2) 
-  profile.set_preference('browser.download.manager.showWhenStarting', False)
-  profile.set_preference('browser.download.dir', 'C:\titititit\Descargas')
-  profile.set_preference('browser.helperApps.neverAsk.saveToDisk', 'application/zip')
-  
-  links=url
-    for i in pags:
-      url_loop= 'https://www.electrobuzz.net/page/' + str(i) + '/'
-      driver.get(url_loop)
-      pre_links= driver.find_elements_by_css_selector("div:nth-child(1) > h2:nth-child(2) > a:nth-child(1)")
-      
-    for j in np.arange(0,len(pre_links),step=1):
+
+file=os.getcwd()+'\\1.csv'
+with open(file, 'wb') as myfile:
+       wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
+       wr.writerow(links)
+       
+       
+vectores_pags=list(chunks(pags, 1000))
+
+
+
+#Abrimos ventanas en blanco, tantas como vectores halla  
+for i in np.arange(1,len(vectores_pags)): 
+   driver.execute_script("window.open('');")
+
+
+
+a=driver.window_handles
+b=np.arange(0,len(a))
+
+listas_multi=zip(vectores_pags,b)
+
+def electrobuzz(vector_pags, num):
     
-      links.append(pre_links[j].get_attribute('href')) 
+  current= driver.switch_to_window(num)
+  links=['urls']
+  
+  for i in vector_pags:
+    url_loop= 'https://www.electrobuzz.net/page/' + str(i) + '/'
+    current.get(url_loop)
+    pre_links=  current.find_elements_by_css_selector("div:nth-child(1) > h2:nth-child(2) > a:nth-child(1)")
+      
+  for j in np.arange(0,len(pre_links),step=1):
+
+    links.append(pre_links[j].get_attribute('href')) 
 
   name= str(vector_pags[0])
   file=os.getcwd()+'\\' + name + 'csv'
@@ -71,11 +90,7 @@ def electrobuzz(vector_pags):
 
 
 
+from multiprocessing import Pool (8) as pool
 
-
-
-from multiprocessing import Pool
 if __name__ == "__main__":
-  
-  r=Pool(4)
-r.map(req,['2011','2013','2015','2017'])
+    resutl=pool.apply_async(electrobuzz,listas_multi)
