@@ -76,8 +76,7 @@ def get_info(vector_dado)
         
         req= requests.get(url_page)
         soup = BeautifulSoup(req.content, 'html.parser')
-        soup1=soup.find_all('div', {'class': 'listing listing-blog listing-blog-1 clearfix  columns-1'})
-        soup2=soup1[0].find_all('article')
+        soup2=soup.find_all('article')
         
         list_info.append(obtn_link_title_img(soup2))
         
