@@ -10,6 +10,7 @@ import requests
 import shutil
 import numpy as np
 import os
+import random
 
 
 ################funciones
@@ -126,6 +127,10 @@ def get_vector_pags(bs4_elmn):
     return vector_pages
 
 
+def div_vector_pags(l, n):
+    """Yield successive n-sized chunks from l."""
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
 # Hacemos el primer request para obtener los releases de la pagina  principal y el numero total de páginas
 first_req= requests.get('https://www.electrobuzz.net')
 
@@ -145,9 +150,26 @@ proxies=get_proxies()
 
 
 
+### divide el vector de pags. en grupos del tamaño que queramos
+### nos sirve para aplicar multiproccessign en paralelo. 
+### cada proceso contara con un vector diferente
+vec_pags_div=list(div_vector_pags(total_pags_vec,5))
+
+
+### numero aleatorio para elegir el proxii
+list_random=[]
+for i in np.arange(0,len(vec_pags_div)):
+     n=random.randrange(0, len(proxies))
+     list_random.append(n)
+    
+vec_pags_proxi= []
+for i in range(0,len(vec_pags_div)):
+    vec_pags_proxi.append(list([vec_pags_div[i],set_proxi_for_req(proxies,list_random[i])]))
+    
+    
 
 from multiprocessing import Pool
 
 if __name__ == '__main__':
     p = Pool(5)
-    print(p.map(f, [1, 2, 3]))
+    print(p.map(srch_info, vec_pags_proxi[:3]))
