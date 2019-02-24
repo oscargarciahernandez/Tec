@@ -87,8 +87,9 @@ def get_proxies():
 ### funcion para poner en un formato guay para usar requests.get
 ## hay que incluir el array de proxies y la posición n (se podría llegar a generar de manera aleatoria)
 def set_proxi_for_req(proxies,n):
-    proxi='http://' + str(proxies[n]['ip'])+ ':' +proxies[n]['port']
-    proxi1 = {'http': str(proxi)}
+    proxi_http='http://' + str(proxies[n]['ip'])+ ':' +proxies[n]['port']
+    proxi_https='https://' + str(proxies[n]['ip'])+ ':' +proxies[n]['port']
+    proxi1 = {'http': str(proxi_http), "https": str(proxi_https)}
     return proxi1
 
 
@@ -131,8 +132,15 @@ def div_vector_pags(l, n):
     """Yield successive n-sized chunks from l."""
     for i in range(0, len(l), n):
         yield l[i:i + n]
+        
+        
+        
+
+## obtenemos las proxies
+proxies=get_proxies()
+
 # Hacemos el primer request para obtener los releases de la pagina  principal y el numero total de páginas
-first_req= requests.get('https://www.electrobuzz.net')
+first_req= requests.get('https://www.electrobuzz.net', proxies= set_proxi_for_req(proxies,16))
 
 soup = BeautifulSoup(first_req.content, 'html.parser')
 soup1=soup.find_all('div', {'class': 'listing listing-blog listing-blog-1 clearfix columns-1 columns-1'})
@@ -144,9 +152,6 @@ total_pags_vec= get_vector_pags(soup)
 
 #Info de la página principal
 info_pag_1= obtn_link_title_img(soup2)
-
-## obtenemos las proxies
-proxies=get_proxies()
 
 
 
