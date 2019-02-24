@@ -11,6 +11,7 @@ import shutil
 import numpy as np
 import os
 import random
+from random import choice
 
 
 ################funciones
@@ -100,7 +101,8 @@ def set_proxi_for_req(proxies,n):
 
 ########Funcion que busca la informaxcion de electrobuz
     ##### hay que setear el vector de páginas y el proxi a utilizar empleando la funcion set_proxi_for_req
-    
+
+#### OBSOLETO    
 def srch_info(vector_paginas, proxi1):
     
     url_base= 'https://www.electrobuzz.net/page'
@@ -127,23 +129,82 @@ def get_vector_pags(bs4_elmn):
     vector_pages= np.arange(2,pages+1)  
     return vector_pages
 
-
+### OBSOLETO
 def div_vector_pags(l, n):
     """Yield successive n-sized chunks from l."""
     for i in range(0, len(l), n):
         yield l[i:i + n]
         
+#DESCARGAR PEDAZO DE LISTA DE USER AGENTS        
+def get_user_agents():
+    user_agents= requests.get('http://www.useragentstring.com/pages/useragentstring.php?typ=Browser')
+    user_soup = BeautifulSoup(user_agents.content, 'html.parser')
+    user_soup1=user_soup.find_all('ul')
+    
+    users_list=[]
+    for i in np.arange(0,len(user_soup1)):
+        user_soup2= user_soup1[i].find_all('a')
+        for j in np.arange(0,len(user_soup2)):
+            users_list.append(user_soup2[j].text)
+            
+    return users_list
+
+#PONER USER AGENTS EN FORMATO PARA HEADERS
+def set_user_agents(users_list, n):
+    headers = {'User-Agent': str(users_list[n])}
+    return headers
+
+#FUNCION GUAY, MUY GUAY.
+def srch_info_chg_ua(vector_paginas, ua):
+    
+    url_base= 'https://www.electrobuzz.net/page'
         
+    list_info=[]
+    for i in vector_paginas:
+        url_page= url_base + '/' + str(i)+ '/'
+        headers=set_user_agents(users_list,random.randrange(0,len(ua)))
         
+        req= requests.get(url_page, headers= headers)
+        soup = BeautifulSoup(req.content, 'html.parser')
+        soup2=soup.find_all('article')
+    
+        
+        list_info.append(obtn_link_title_img(soup2))
+        
+    
+    return list_info
+
+
+
+
+
+
+
+
+
+
+
+    users_list= get_user_agents()        
 
 ## obtenemos las proxies
 proxies=get_proxies()
 
 # Hacemos el primer request para obtener los releases de la pagina  principal y el numero total de páginas
-first_req= requests.get('https://www.electrobuzz.net', proxies= set_proxi_for_req(proxies,16))
+first_req_conproxi= requests.get('https://www.electrobuzz.net/', 
+                        proxies= set_proxi_for_req(proxies,10),
+                        headers=set_user_agents(users_list,
+                                                 random.randrange(0, 
+                                                                  len(users_list))))
+
+first_req= requests.get('https://www.electrobuzz.net/',
+                        headers=set_user_agents(users_list,
+                                                 random.randrange(0, 
+                                                                  len(users_list))))
+
 
 soup = BeautifulSoup(first_req.content, 'html.parser')
-soup1=soup.find_all('div', {'class': 'listing listing-blog listing-blog-1 clearfix columns-1 columns-1'})
+soup1=soup.find_all('div', 
+                    {'class': 'listing listing-blog listing-blog-1 clearfix columns-1 columns-1'})
 soup2=soup1[0].find_all('article')
 
 
@@ -178,3 +239,12 @@ from multiprocessing import Pool
 if __name__ == '__main__':
     p = Pool(5)
     print(p.map(srch_info, vec_pags_proxi[:3]))
+    
+    
+    
+
+prueba=srch_info_chg_ua(total_pags_vec, users_list)
+
+    
+    
+
