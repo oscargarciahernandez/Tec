@@ -53,7 +53,16 @@ def obtn_link_title_img(bs4_element):
     
 
 
+def obtn_link_title(bs4_element):
+    list_link_title= []
+    for i in np.arange(0,len(soup2)):
+        title= soup2[i].find('a')['title']
+        link= soup2[i].find('a')['href']
 
+        link_title= list([link, title])
+        list_link_title.append(link_title)
+        
+    return list_link_title
 
 
 
@@ -169,7 +178,7 @@ def srch_info_chg_ua(vector_paginas, ua):
         soup2=soup.find_all('article')
     
         
-        list_info.append(obtn_link_title_img(soup2))
+        list_info.append(obtn_link_title(soup2))
         
     
     return list_info
@@ -215,7 +224,7 @@ total_pags_vec= get_vector_pags(soup)
 info_pag_1= obtn_link_title_img(soup2)
 
 
-prueba=srch_info_chg_ua(total_pags_vec, users_list)
+prueba=srch_info_chg_ua(total_pags_vec[:1000], users_list)
 
 
 
@@ -247,10 +256,6 @@ if __name__ == '__main__':
     p = Pool(5)
     print(p.map(srch_info, vec_pags_proxi[:3]))
     
-    
-    
-
-
     
     
 
