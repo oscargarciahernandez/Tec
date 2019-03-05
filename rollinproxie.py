@@ -169,11 +169,23 @@ def srch_info_chg_ua(vector_paginas, ua):
     url_base= 'https://www.electrobuzz.net/page'
         
     list_info=[]
-    for i in vector_paginas:
-        url_page= url_base + '/' + str(i)+ '/'
-        headers=set_user_agents(ua,random.randrange(0,len(ua)))
+    for i in vector_paginas:     
+        while True:
+            try:
+                url_page= url_base + '/' + str(i)+ '/'
+                headers=set_user_agents(ua,random.randrange(0,len(ua)))
+                req= requests.get(url_page, headers= headers)                
+                if req.status_code == requests.codes.ok:
+                    break
+            except:
+                pass
+            print('invalid user_agent')
+
+
+            
+
         
-        req= requests.get(url_page, headers= headers)
+        
         soup = BeautifulSoup(req.content, 'html.parser')
         soup2=soup.find_all('article')
     
@@ -188,22 +200,13 @@ def srch_info_chg_ua(vector_paginas, ua):
     
 
 
-
-
-
-
-
 users_list= get_user_agents()        
 
 ## obtenemos las proxies
-proxies=get_proxies()
+#proxies=get_proxies()
 
 # Hacemos el primer request para obtener los releases de la pagina  principal y el numero total de páginas
-first_req_conproxi= requests.get('https://www.electrobuzz.net/', 
-                        proxies= set_proxi_for_req(proxies,10),
-                        headers=set_user_agents(users_list,
-                                                 random.randrange(0, 
-                                                                  len(users_list))))
+#first_req_conproxi= requests.get('https://www.electrobuzz.net/',proxies= set_proxi_for_req(proxies,10),headers=set_user_agents(users_list,random.randrange(0, len(users_list))))
 
 first_req= requests.get('https://www.electrobuzz.net/',
                         headers=set_user_agents(users_list,
@@ -221,10 +224,10 @@ soup2=soup1[0].find_all('article')
 total_pags_vec= get_vector_pags(soup)
 
 #Info de la página principal
-info_pag_1= obtn_link_title_img(soup2)
+info_pag_1= obtn_link_title(soup2)
 
 
-prueba=srch_info_chg_ua(total_pags_vec[:1000], users_list)
+#prueba=srch_info_chg_ua(total_pags_vec, users_list)
 
 
 
@@ -237,25 +240,11 @@ prueba=srch_info_chg_ua(total_pags_vec[:1000], users_list)
 ### cada proceso contara con un vector diferente
 vec_pags_div=list(div_vector_pags(total_pags_vec,5))
 
+import time
 
-### numero aleatorio para elegir el proxii
-list_random=[]
+links_list=[]
 for i in np.arange(0,len(vec_pags_div)):
-     n=random.randrange(0, len(proxies))
-     list_random.append(n)
-    
-vec_pags_proxi= []
-for i in range(0,len(vec_pags_div)):
-    vec_pags_proxi.append(list([vec_pags_div[i],set_proxi_for_req(proxies,list_random[i])]))
-    
-    
-
-from multiprocessing import Pool
-
-if __name__ == '__main__':
-    p = Pool(5)
-    print(p.map(srch_info, vec_pags_proxi[:3]))
-    
-    
-    
+    links_list.append(srch_info_chg_ua(vec_pags_div[i],users_list))
+    time.sleep(0.5)
+    print(str(i))
 
