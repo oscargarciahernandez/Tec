@@ -22,7 +22,14 @@ driver=webdriver.Firefox(profile)
 url= "https://cosmobox.org"
 driver.get(url)
 
-
+### Login attr sin necesidad de que esten en la nube.. xd
+login= []
+file=os.getcwd()+'\login.txt'
+with open(file, 'rb') as myfile:
+     wx = csv.reader(myfile)
+     for x in wx:
+         login.append(x)
+         
 
 
 ### Esto se supone que debería valer para registrarse uno.... no se que pasará
@@ -30,10 +37,10 @@ button_login= driver.find_elements_by_css_selector("#topnav > div.topbar-main > 
 button_login[0].click()
 
 caja_user= driver.find_elements_by_css_selector('#login > div > div > div.account-bg > div > div.m-t-10.p-20 > form > div:nth-child(5) > div > input')
-caja_user[0].send_keys('oscargarciahernandez')
+caja_user[0].send_keys('')
 
 caja_pass= driver.find_elements_by_css_selector('#login > div > div > div.account-bg > div > div.m-t-10.p-20 > form > div:nth-child(6) > div > input')
-caja_pass[0].send_keys('hernandez1')
+caja_pass[0].send_keys('')
 
 
 buton_submit= driver.find_elements_by_css_selector('#login > div > div > div.account-bg > div > div.m-t-10.p-20 > form > div.form-group.text-center.row.m-t-10 > div > button')
