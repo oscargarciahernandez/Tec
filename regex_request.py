@@ -13,61 +13,108 @@ import os
 import random
 from random import choice
 import re
+import time
+import csv
+from itertools import chain
 
 
-
-url_base= 'https://www.electrobuzz.net/page/2'
-req= requests.get(url_base)                
+#DESCARGAR PEDAZO DE LISTA DE USER AGENTS        
+def get_user_agents():
+    user_agents= requests.get('http://www.useragentstring.com/pages/useragentstring.php?typ=Browser')
+    user_soup = BeautifulSoup(user_agents.content, 'html.parser')
+    user_soup1=user_soup.find_all('ul')
+    
+    users_list=[]
+    for i in np.arange(0,len(user_soup1)):
+        user_soup2= user_soup1[i].find_all('a')
+        for j in np.arange(0,len(user_soup2)):
+            users_list.append(user_soup2[j].text)
             
+    return users_list
 
-
-m = re.findall(r'<article(.*)<\article>', req.content)
-
-m = re.findall(r'\"href(.*)\"', req.content)
-
-if m:
-    found = m.group(1)
-
-
-        
-
-    
-    
-    soup = BeautifulSoup(req.content, 'html.parser')
-    soup2=soup.find_all('article')
-
-    
-    list_info.append(obtn_link_title(soup2))
-    
-    
+#PONER USER AGENTS EN FORMATO PARA HEADERS
+def set_user_agents(users_list, n):
+    headers = {'User-Agent': str(users_list[n])}
+    return headers
 
 
 
-    
+
 
 
 users_list= get_user_agents()        
 
-## obtenemos las proxies
-#proxies=get_proxies()
-
-# Hacemos el primer request para obtener los releases de la pagina  principal y el numero total de páginas
-#first_req_conproxi= requests.get('https://www.electrobuzz.net/',proxies= set_proxi_for_req(proxies,10),headers=set_user_agents(users_list,random.randrange(0, len(users_list))))
-
-first_req= requests.get('https://www.electrobuzz.net/',
-                        headers=set_user_agents(users_list,
-                                                 random.randrange(0, 
-                                                                  len(users_list))))
-
-
-soup = BeautifulSoup(first_req.content, 'html.parser')
-soup1=soup.find_all('div', 
-                    {'class': 'listing listing-blog listing-blog-1 clearfix columns-1 columns-1'})
-soup2=soup1[0].find_all('article')
+while True:
+            try:
+                ua=set_user_agents(users_list,random.randrange(0, len(users_list)))
+                req= requests.get('https://www.electrobuzz.net/',
+                                  headers=ua)
+                
+                if req.status_code == requests.codes.ok:
+                    break
+            except:
+                pass
+            print('invalid UserAgent')
 
 
-##vector de pags
-total_pags_vec= get_vector_pags(soup)
+req.content          
 
-#Info de la página principal
-info_pag_1= obtn_link_title(soup2)
+
+
+m = re.findall('https://www.electrobuzz.net/[0-9]'
+               '[^\"]+' , req.text)
+
+m1 = list(set(m))
+
+
+mp = re.findall('https://www.electrobuzz.net/page/([0-9]+)' , req.text)
+
+pages=int(mp[2])
+
+
+link_list= []
+k=2
+while True:
+    fail=1
+    while True:
+            try:
+                ua=set_user_agents(users_list,random.randrange(0, len(users_list)))
+                url='https://www.electrobuzz.net/page/' + str(k) +'/'
+                req= requests.get(url,
+                                  headers=ua)
+                
+                if req.status_code == requests.codes.ok:
+                    break
+            except:
+                pass
+            print('invalid UserAgent')
+            fail=fail+1
+            if fail>10:
+                break
+    if fail>10:
+        break
+            
+            
+           
+    m = re.findall('https://www.electrobuzz.net/[0-9]'
+               '[^\"]+' , req.text)
+    m1 = list(set(m))
+    
+    if(len(m1)==0):
+        break
+    link_list.append(m1)
+    time.sleep(random.random())
+    print(str(k))
+    k=k+1
+    
+    
+# Esto lo que hace es comvertir la lista de listas en 
+    # 1 única lista
+prueba= list(chain.from_iterable(link_list))
+    
+file=os.getcwd()+'\urls.csv'
+
+with open(file, 'wb') as myfile:
+     wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
+     for x in np.arange(0,len(prueba)):
+         wr.writerow([str(prueba[x])])

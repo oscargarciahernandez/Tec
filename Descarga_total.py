@@ -19,10 +19,37 @@ profile.set_preference('browser.helperApps.neverAsk.saveToDisk', 'application/zi
 
 path=os.getcwd()
 driver=webdriver.Firefox(profile)
+url= "https://cosmobox.org"
+driver.get(url)
+
+
+
+
+### Esto se supone que debería valer para registrarse uno.... no se que pasará
+button_login= driver.find_elements_by_css_selector("#topnav > div.topbar-main > div > div.menu-extras > ul > li:nth-child(6)")
+button_login.click()
+
+caja_user= driver.find_elements_by_css_selector('#login > div > div > div.account-bg > div > div.m-t-10.p-20 > form > div:nth-child(5) > div > input')
+caja_user.send_keys('oscargarciahernandez')
+
+caja_pass= driver.find_elements_by_css_selector('#login > div > div > div.account-bg > div > div.m-t-10.p-20 > form > div:nth-child(6) > div > input')
+caja_pass.send_keys('hernandez1')
+
+
+buton_submit= driver.find_elements_by_css_selector('#login > div > div > div.account-bg > div > div.m-t-10.p-20 > form > div.form-group.text-center.row.m-t-10 > div > button')
+buton_submit.click()
+
+
+
+
+
+
+
+driver=webdriver.Firefox(profile)
 url= "https://www.electrobuzz.net/"
 driver.get(url)
 
-pre_links= driver.find_elements_by_css_selector("div:nth-child(1) > h2:nth-child(2) > a:nth-child(1)")
+pre_links= driver.find_elements_by_css_selector("#topnav > div.topbar-main > div > div.menu-extras > ul > li:nth-child(6)")
 total_pags=driver.find_element_by_css_selector("a.page-numbers:nth-child(5)").get_attribute('text').replace(',','')
 
 pags=np.arange(0,int(total_pags),step=1)
