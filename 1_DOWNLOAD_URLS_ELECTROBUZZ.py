@@ -122,3 +122,75 @@ with open(file, 'wt') as myfile:
          wr.writerow([prueba[x]])
 
 
+
+
+#BUSCAMOS PARALELIZACIÓN DE LA MOVIDA 
+         
+         
+def GET_ELECTROBUZZ_URLS(users_list, k):
+    
+    fail=1
+    while True:
+            try:
+                ua=set_user_agents(users_list,random.randrange(0, len(users_list)))
+                url='https://www.electrobuzz.net/page/' + str(k) +'/'
+                req= requests.get(url,
+                                  headers=ua)
+                
+                if req.status_code == requests.codes.ok:
+                    break
+            except:
+                pass
+            print('invalid UserAgent')
+            fail=fail+1
+            if fail>10:
+                break
+
+            
+            
+           
+    m = re.findall('https://www.electrobuzz.net/[0-9]'
+               '[^\"]+' , req.text)
+    m1 = list(set(m))
+    print(str(k))
+    return m1
+    
+    
+# Esto lo que hace es comvertir la lista de listas en 
+    # 1 única lista
+prueba= list(chain.from_iterable(link_list))
+
+##GUARDAMOS
+file= os.getcwd() + "/urls_190619.csv"
+with open(file, 'wt') as myfile:
+     wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
+     for x in np.arange(0,len(prueba)):
+         wr.writerow([prueba[x]])
+
+
+
+def main():
+
+    #DESCARGAMOS USER AGENTS 
+    users_list= get_user_agents()  
+    
+    #PARALELIZAMOS EMPLEANDO POLL.STARMAP CON TODOS LOS NÚCLUES -1        
+    pool = mp.Pool(mp.cpu_count()-1)
+    results = pool.starmap(GET_ELECTROBUZZ_URLS, [(users_list,k) for k in np.arange(0,100000)])
+    
+    #MATAMOS SUBPROCESOS 
+    pool.terminate()
+    pool.join()
+    #GUARDAMOS RESULTADOS EN UN CSV
+    file= os.getcwd() + "/urls_cosmo_multi.csv"
+    with open(file, 'wt') as myfile:
+         wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
+         for x in np.arange(0,len(results)):
+             wr.writerow([results[x]])
+             
+             
+
+#AL ATAQUE        
+if __name__ == '__main__':
+    main()
+    
