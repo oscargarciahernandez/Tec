@@ -47,7 +47,7 @@ def obtn_link_title_img(bs4_element):
         link_img= soup2[0].find('a')['data-src']
         ext=link_img[-3:]
         filename= title.replace(' ','').replace('/','').replace('\\','') + '.' + ext
-        path='C:/Users/Oscar/Desktop/img/'
+        path='/home/oscar/Tec/'
         file_ext= path + filename
         
         r = requests.get(link_img, stream=True)
