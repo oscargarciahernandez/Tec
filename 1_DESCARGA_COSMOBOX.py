@@ -24,38 +24,44 @@ driver.get(url)
 
 ### Login attr sin necesidad de que esten en la nube.. xd
 login= []
-file=os.getcwd()+'\login.txt'
-with open(file, 'rb') as myfile:
+file=os.getcwd()+'/login.txt'
+with open(file, 'rt') as myfile:
      wx = csv.reader(myfile)
      for x in wx:
          login.append(x)
-         
 
+usr=str(re.search('usr= (.*)',str(login[0])).group(1).replace('\']', ""))
+password=re.search('pass= (.*)',str(login[1])).group(1).replace('\']', "")
 
 ### Esto se supone que debería valer para registrarse uno.... no se que pasará
 button_login= driver.find_elements_by_css_selector("#topnav > div.topbar-main > div > div.menu-extras > ul > li:nth-child(6)")
 button_login[0].click()
 
 caja_user= driver.find_elements_by_css_selector('#login > div > div > div.account-bg > div > div.m-t-10.p-20 > form > div:nth-child(5) > div > input')
-caja_user[0].send_keys('')
+caja_user[0].send_keys(Keys.CONTROL + "a")
+caja_user[0].send_keys(Keys.DELETE)
+caja_user[0].send_keys(usr)
 
 caja_pass= driver.find_elements_by_css_selector('#login > div > div > div.account-bg > div > div.m-t-10.p-20 > form > div:nth-child(6) > div > input')
-caja_pass[0].send_keys('')
-
+caja_pass[0].send_keys(Keys.CONTROL + "a")
+caja_pass[0].send_keys(Keys.DELETE)
+caja_pass[0].send_keys(password)
 
 buton_submit= driver.find_elements_by_css_selector('#login > div > div > div.account-bg > div > div.m-t-10.p-20 > form > div.form-group.text-center.row.m-t-10 > div > button')
 buton_submit[0].click()
 
 
 ###TRAS REGISTRARNOS ABRIMOS UNA VENTANA NUEVA, PARA EMPEZAR A DESCARBGAR MOVIDAS
+driver.switchTo().window()
 
+cosmo_url= []
+file=os.getcwd()+'/urls_cosmo_multi.csv'
+with open(file, 'rt') as myfile:
+     wx = csv.reader(myfile)
+     for x in wx:
+         cosmo_url.append(x)
 
-driver.execute_script("window.open('https://twitter.com')")
-
-
-
-
-
+re.findall(r'(?<=\')[^\']+(?=:?\')',str(cosmo_url[20]))
 
 
 driver=webdriver.Firefox(profile)

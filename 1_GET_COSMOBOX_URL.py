@@ -9,16 +9,14 @@ Created on Wed Jun 19 18:51:01 2019
 
 from bs4 import BeautifulSoup
 import requests
-import shutil
 import numpy as np
 import os
 import random
-from random import choice
 import re
-import time
-import csv
-from itertools import chain
+import csv    
+import tqdm
 import multiprocessing as mp
+
 
 
 #DESCARGAR PEDAZO DE LISTA DE USER AGENTS        
@@ -47,9 +45,10 @@ def set_user_agents(users_list, n):
     return headers
 
 
-
-         
-def GET_COSMOBOX_URL(users_list, read_url):
+      
+def GET_COSMOBOX_URL(merge_inputs):
+    users_list= merge_inputs[0]
+    read_url= merge_inputs[1]
     
     #SI FALLA VUELVE A INTENTARLO CAMBIANDO EL USER-AGENT--- ASI HASTA 10 VECES
     fail=1
@@ -70,18 +69,28 @@ def GET_COSMOBOX_URL(users_list, read_url):
                 break
         except:
             pass
-        print('invalid UserAgent')
+        #print('invalid UserAgent')
         fail=fail+1
         if fail>10:
             break
+        '''
+        with lock:
+            progress= tqdm.tqdm(total= Ntotal, position= pos)
+        for _ in range(0, Ntotal, 5):
+            with lock:
+                progress.update(5)
+                time.sleep(0.1)
+        with lock:
+            progress.close()
+        '''
+            
         
     #TRATAMOS EL REQUESTS COMO TEXTO Y BUSCAMOS LA URL DE COSMOBOX
     m = re.findall('https://cosmobox.org/' \
                '[^\"]+' , req.text)
     m1 = list(set(m))
-    print(m1)
+    #print(m1)
     return m1
-    
 
 #FUNCIÓN MAIN... AKI SE ABORDA LA PARALELIZACIÓN DE LA MOVIDA
 def main():
@@ -96,11 +105,23 @@ def main():
     #DESCARGAMOS USER AGENTS 
     users_list= get_user_agents()  
     
+    merge_list= []
+    for i in np.arange(0, len(read_urls)):
+        merge_list.append([users_list, read_urls[i]])   
+        
+    
     #PARALELIZAMOS EMPLEANDO POLL.STARMAP CON TODOS LOS NÚCLUES -1        
     pool = mp.Pool(mp.cpu_count()-1)
-    results = pool.starmap(GET_COSMOBOX_URL, [(users_list,read_urls[k]) for k in np.arange(0,len(read_urls))])
-    
+    #results = pool.starmap(GET_COSMOBOX_URL, [(users_list,read_urls[k], k, 100) for k in np.arange(0,100)])
+    #resuLts= pool.map([GET_COSMOBOX_URL(users_list, read_urls[k]) for k in np.arange(100)])
+
+    #results = pool.map(GET_COSMOBOX_URL, merge_list)    
+    results=[]
+    for _ in tqdm.tqdm(pool.imap_unordered(GET_COSMOBOX_URL, merge_list), total=len(read_urls)):
+        results.append(_)
+        pass
     #MATAMOS SUBPROCESOS 
+    pool.close()
     pool.terminate()
     pool.join()
     #GUARDAMOS RESULTADOS EN UN CSV
@@ -112,9 +133,7 @@ def main():
              
              
 
-#AL ATAQUE        
+#AL A TAQUE        
 if __name__ == '__main__':
     main()
     
-
-
