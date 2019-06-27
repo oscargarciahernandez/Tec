@@ -35,3 +35,10 @@ console.error: BroadcastService:
 1561410746629	Marionette	INFO	Stopped listening on port 41155
 JavaScript error: https://cosmobox.org/ree/cp/js/jquery.app.js, line 272: TypeError: $(...).slimscroll is not a function
 JavaScript error: https://cosmobox.org/ree/cp/js/jquery.app.js, line 272: TypeError: $(...).slimscroll is not a function
+IPDL protocol error: Handler returned error code!
+
+###!!! [Parent][DispatchAsyncMessage] Error: PLayerTransaction::Msg_ReleaseLayer Processing error: message was deserialized, but the handler returned false (indicating failure)
+
+[Parent 7364, Gecko_IOThread] WARNING: pipe error (114): Conexión reinicializada por la máquina remota: file /build/firefox-xkwMhH/firefox-67.0+build2/ipc/chromium/src/chrome/common/ipc_channel_posix.cc, line 357
+1561465143218	Marionette	INFO	Stopped listening on port 46087
+[Parent 7364, Gecko_IOThread] WARNING: pipe error (80): Conexión reinicializada por la máquina remota: file /build/firefox-xkwMhH/firefox-67.0+build2/ipc/chromium/src/chrome/common/ipc_channel_posix.cc, line 357

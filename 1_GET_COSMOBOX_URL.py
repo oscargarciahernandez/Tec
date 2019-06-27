@@ -45,6 +45,7 @@ def set_user_agents(users_list, n):
     return headers
 
 
+
       
 def GET_COSMOBOX_URL(merge_inputs):
     users_list= merge_inputs[0]
@@ -62,8 +63,7 @@ def GET_COSMOBOX_URL(merge_inputs):
             #CREAMOS SESION E IGNORAMOS ENV... PROBLEMA PROXY
             session = requests.Session()
             session.trust_env = False
-            req= session.get(url,
-                              headers=ua)
+            req= session.get(url,headers=ua)
             
             if req.status_code == requests.codes.ok:
                 break
@@ -83,14 +83,19 @@ def GET_COSMOBOX_URL(merge_inputs):
         with lock:
             progress.close()
         '''
-            
-        
+    Contenido=[]
+    #CONSEGUIR ARTISTA 
+    ARTISTA= re.search(r'ARTIST\(S\):</span>(.*?)</p>', req.text).group(1)
+    SONGS=  re.search(r'greyf12(.*?)</ol>', req.text.replace("\n","")).group(1)
+    SONG_ART= re.findall(r'<strong>(.*?)</strong>',SONGS)
+    SONG_NAME= re.findall(r'\;(.*?)</li>',SONGS)
     #TRATAMOS EL REQUESTS COMO TEXTO Y BUSCAMOS LA URL DE COSMOBOX
     m = re.findall('https://cosmobox.org/' \
                '[^\"]+' , req.text)
     m1 = list(set(m))
+    Contenido.extend([read_url, m1, ARTISTA, list(zip(SONG_ART, SONG_NAME))])
     #print(m1)
-    return m1
+    return Contenido
 
 #FUNCIÓN MAIN... AKI SE ABORDA LA PARALELIZACIÓN DE LA MOVIDA
 def main():

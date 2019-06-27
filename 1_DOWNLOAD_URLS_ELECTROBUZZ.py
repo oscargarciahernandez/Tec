@@ -127,7 +127,10 @@ with open(file, 'wt') as myfile:
 #BUSCAMOS PARALELIZACIÓN DE LA MOVIDA 
          
          
-def GET_ELECTROBUZZ_URLS(users_list, k):
+def GET_ELECTROBUZZ_URLS(merge_inputs):
+    users_list= merge_inputs[0]
+    k= merge_inputs[1]
+    
     
     fail=1
     while True:
@@ -148,11 +151,10 @@ def GET_ELECTROBUZZ_URLS(users_list, k):
 
             
             
-           
+    primary= re.search('primary(.*)',req.text.replace("\n","")).group(1)
     m = re.findall('https://www.electrobuzz.net/[0-9]'
-               '[^\"]+' , req.text)
+               '[^\"]+' , primary)
     m1 = list(set(m))
-    print(str(k))
     return m1
     
     
@@ -191,6 +193,103 @@ def main():
              
 
 #AL ATAQUE        
+if __name__ == '__main__':
+    main()
+    
+
+
+def GET_COSMOBOX_URL(merge_inputs):
+    users_list= merge_inputs[0]
+    read_url= merge_inputs[1]
+    
+    #SI FALLA VUELVE A INTENTARLO CAMBIANDO EL USER-AGENT--- ASI HASTA 10 VECES
+    fail=1
+    while True:
+        try:
+            #SETEAMOS USER AGENTS Y LA URL PARA QUE REQUESTS NO FALLE
+            ua=set_user_agents(users_list,random.randrange(0, len(users_list)))
+            url1= read_url
+            url=str(url1).replace('[\'', '' ).replace('\']', '')
+            
+            #CREAMOS SESION E IGNORAMOS ENV... PROBLEMA PROXY
+            session = requests.Session()
+            session.trust_env = False
+            req= session.get(url,headers=ua)
+            
+            if req.status_code == requests.codes.ok:
+                break
+        except:
+            pass
+        #print('invalid UserAgent')
+        fail=fail+1
+        if fail>10:
+            break
+        '''
+        with lock:
+            progress= tqdm.tqdm(total= Ntotal, position= pos)
+        for _ in range(0, Ntotal, 5):
+            with lock:
+                progress.update(5)
+                time.sleep(0.1)
+        with lock:
+            progress.close()
+        '''
+    Contenido=[]
+    #CONSEGUIR ARTISTA 
+    ARTISTA= re.search(r'ARTIST\(S\):</span>(.*?)</p>', req.text).group(1)
+    SONGS=  re.search(r'greyf12(.*?)</ol>', req.text.replace("\n","")).group(1)
+    SONG_ART= re.findall(r'<strong>(.*?)</strong>',SONGS)
+    SONG_NAME= re.findall(r'\;(.*?)</li>',SONGS)
+    #TRATAMOS EL REQUESTS COMO TEXTO Y BUSCAMOS LA URL DE COSMOBOX
+    m = re.findall('https://cosmobox.org/' \
+               '[^\"]+' , req.text)
+    m1 = list(set(m))
+    Contenido.extend([read_url, m1, ARTISTA, list(zip(SONG_ART, SONG_NAME))])
+    #print(m1)
+    return Contenido
+
+#FUNCIÓN MAIN... AKI SE ABORDA LA PARALELIZACIÓN DE LA MOVIDA
+def main():
+    ### LEEMOS URL'S DE ELECTROBUZZ
+    read_urls= []
+    file=os.getcwd() + "/urls_190619.csv"
+    with open(file, 'rt') as myfile:
+         wx = csv.reader(myfile)
+         for x in wx:
+             read_urls.append(x)
+    
+    #DESCARGAMOS USER AGENTS 
+    users_list= get_user_agents()  
+    
+    merge_list= []
+    for i in np.arange(0, len(read_urls)):
+        merge_list.append([users_list, read_urls[i]])   
+        
+    
+    #PARALELIZAMOS EMPLEANDO POLL.STARMAP CON TODOS LOS NÚCLUES -1        
+    pool = mp.Pool(mp.cpu_count()-1)
+    #results = pool.starmap(GET_COSMOBOX_URL, [(users_list,read_urls[k], k, 100) for k in np.arange(0,100)])
+    #resuLts= pool.map([GET_COSMOBOX_URL(users_list, read_urls[k]) for k in np.arange(100)])
+
+    #results = pool.map(GET_COSMOBOX_URL, merge_list)    
+    results=[]
+    for _ in tqdm.tqdm(pool.imap_unordered(GET_COSMOBOX_URL, merge_list), total=len(read_urls)):
+        results.append(_)
+        pass
+    #MATAMOS SUBPROCESOS 
+    pool.close()
+    pool.terminate()
+    pool.join()
+    #GUARDAMOS RESULTADOS EN UN CSV
+    file= os.getcwd() + "/urls_cosmo_multi.csv"
+    with open(file, 'wt') as myfile:
+         wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
+         for x in np.arange(0,len(results)):
+             wr.writerow([results[x]])
+             
+             
+
+#AL A TAQUE        
 if __name__ == '__main__':
     main()
     
