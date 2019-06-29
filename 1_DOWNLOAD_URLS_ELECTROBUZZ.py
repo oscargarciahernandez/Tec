@@ -7,15 +7,17 @@ Created on Tue Mar  5 23:58:11 2019
 
 from bs4 import BeautifulSoup
 import requests
-import shutil
 import numpy as np
 import os
 import random
-from random import choice
 import re
-import time
-import csv
-from itertools import chain
+import csv    
+import tqdm
+import multiprocessing as mp
+from  itertools import chain
+from datetime import date
+
+
 
 
 #DESCARGAR PEDAZO DE LISTA DE USER AGENTS        
@@ -40,92 +42,7 @@ def set_user_agents(users_list, n):
     return headers
 
 
-
-
-
-
-users_list= get_user_agents()        
-
-while True:
-            try:
-                ua=set_user_agents(users_list,random.randrange(0, len(users_list)))
-                req= requests.get('https://www.electrobuzz.net/',
-                                  headers=ua)
-                
-                if req.status_code == requests.codes.ok:
-                    break
-            except:
-                pass
-            print('invalid UserAgent')
-
-
-req.content          
-
-
-
-m = re.findall('https://www.electrobuzz.net/[0-9]'
-               '[^\"]+' , req.text)
-
-m1 = list(set(m))
-
-
-mp = re.findall('https://www.electrobuzz.net/page/([0-9]+)' , req.text)
-
-pages=int(mp[2])
-
-
-link_list= []
-k=2
-while True:
-    fail=1
-    while True:
-            try:
-                ua=set_user_agents(users_list,random.randrange(0, len(users_list)))
-                url='https://www.electrobuzz.net/page/' + str(k) +'/'
-                req= requests.get(url,
-                                  headers=ua)
-                
-                if req.status_code == requests.codes.ok:
-                    break
-            except:
-                pass
-            print('invalid UserAgent')
-            fail=fail+1
-            if fail>10:
-                break
-    if fail>10:
-        break
-            
-            
-           
-    m = re.findall('https://www.electrobuzz.net/[0-9]'
-               '[^\"]+' , req.text)
-    m1 = list(set(m))
-    
-    if(len(m1)==0):
-        break
-    link_list.append(m1)
-    time.sleep(random.random()/20)
-    print(str(k))
-    k=k+1
-    
-    
-# Esto lo que hace es comvertir la lista de listas en 
-    # 1 única lista
-prueba= list(chain.from_iterable(link_list))
-
-##GUARDAMOS
-file= os.getcwd() + "/urls_190619.csv"
-with open(file, 'wt') as myfile:
-     wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-     for x in np.arange(0,len(prueba)):
-         wr.writerow([prueba[x]])
-
-
-
-
-#BUSCAMOS PARALELIZACIÓN DE LA MOVIDA 
-         
+#BUSCAMOS PARALELIZACIÓN DE LA MOVIDA      
          
 def GET_ELECTROBUZZ_URLS(merge_inputs):
     users_list= merge_inputs[0]
@@ -144,7 +61,7 @@ def GET_ELECTROBUZZ_URLS(merge_inputs):
                     break
             except:
                 pass
-            print('invalid UserAgent')
+            #print('invalid UserAgent')
             fail=fail+1
             if fail>10:
                 break
@@ -158,16 +75,7 @@ def GET_ELECTROBUZZ_URLS(merge_inputs):
     return m1
     
     
-# Esto lo que hace es comvertir la lista de listas en 
-    # 1 única lista
-prueba= list(chain.from_iterable(link_list))
-
-##GUARDAMOS
-file= os.getcwd() + "/urls_190619.csv"
-with open(file, 'wt') as myfile:
-     wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-     for x in np.arange(0,len(prueba)):
-         wr.writerow([prueba[x]])
+ 
 
 
 
@@ -176,19 +84,27 @@ def main():
     #DESCARGAMOS USER AGENTS 
     users_list= get_user_agents()  
     
-    #PARALELIZAMOS EMPLEANDO POLL.STARMAP CON TODOS LOS NÚCLUES -1        
-    pool = mp.Pool(mp.cpu_count()-1)
-    results = pool.starmap(GET_ELECTROBUZZ_URLS, [(users_list,k) for k in np.arange(0,100000)])
+    merge_list= []
+    for i in np.arange(1, 8000):
+        merge_list.append([users_list,i])  
     
+    #PARALELIZAMOS EMPLEANDO POLL.STARMAP CON TODOS LOS NÚCLUES -1        
+    pool = mp.Pool(mp.cpu_count()-6)
+    results=[]
+    for _ in tqdm.tqdm(pool.imap_unordered(GET_ELECTROBUZZ_URLS, merge_list), total=len(merge_list)):
+        results.append(_)
+        pass
     #MATAMOS SUBPROCESOS 
+    pool.close()
     pool.terminate()
     pool.join()
+    results_merge= list(chain.from_iterable(results))
     #GUARDAMOS RESULTADOS EN UN CSV
-    file= os.getcwd() + "/urls_cosmo_multi.csv"
+    file= os.getcwd() + "/urls_electrobuzz_" + str(date.today()) + ".csv"
     with open(file, 'wt') as myfile:
          wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-         for x in np.arange(0,len(results)):
-             wr.writerow([results[x]])
+         for x in np.arange(0,len(results_merge)):
+             wr.writerow([results_merge[x]])
              
              
 
@@ -196,100 +112,18 @@ def main():
 if __name__ == '__main__':
     main()
     
-
-
-def GET_COSMOBOX_URL(merge_inputs):
-    users_list= merge_inputs[0]
-    read_url= merge_inputs[1]
     
-    #SI FALLA VUELVE A INTENTARLO CAMBIANDO EL USER-AGENT--- ASI HASTA 10 VECES
-    fail=1
-    while True:
-        try:
-            #SETEAMOS USER AGENTS Y LA URL PARA QUE REQUESTS NO FALLE
-            ua=set_user_agents(users_list,random.randrange(0, len(users_list)))
-            url1= read_url
-            url=str(url1).replace('[\'', '' ).replace('\']', '')
-            
-            #CREAMOS SESION E IGNORAMOS ENV... PROBLEMA PROXY
-            session = requests.Session()
-            session.trust_env = False
-            req= session.get(url,headers=ua)
-            
-            if req.status_code == requests.codes.ok:
-                break
-        except:
-            pass
-        #print('invalid UserAgent')
-        fail=fail+1
-        if fail>10:
-            break
-        '''
-        with lock:
-            progress= tqdm.tqdm(total= Ntotal, position= pos)
-        for _ in range(0, Ntotal, 5):
-            with lock:
-                progress.update(5)
-                time.sleep(0.1)
-        with lock:
-            progress.close()
-        '''
-    Contenido=[]
-    #CONSEGUIR ARTISTA 
-    ARTISTA= re.search(r'ARTIST\(S\):</span>(.*?)</p>', req.text).group(1)
-    SONGS=  re.search(r'greyf12(.*?)</ol>', req.text.replace("\n","")).group(1)
-    SONG_ART= re.findall(r'<strong>(.*?)</strong>',SONGS)
-    SONG_NAME= re.findall(r'\;(.*?)</li>',SONGS)
-    #TRATAMOS EL REQUESTS COMO TEXTO Y BUSCAMOS LA URL DE COSMOBOX
-    m = re.findall('https://cosmobox.org/' \
-               '[^\"]+' , req.text)
-    m1 = list(set(m))
-    Contenido.extend([read_url, m1, ARTISTA, list(zip(SONG_ART, SONG_NAME))])
-    #print(m1)
-    return Contenido
-
-#FUNCIÓN MAIN... AKI SE ABORDA LA PARALELIZACIÓN DE LA MOVIDA
-def main():
-    ### LEEMOS URL'S DE ELECTROBUZZ
-    read_urls= []
-    file=os.getcwd() + "/urls_190619.csv"
-    with open(file, 'rt') as myfile:
-         wx = csv.reader(myfile)
-         for x in wx:
-             read_urls.append(x)
     
-    #DESCARGAMOS USER AGENTS 
-    users_list= get_user_agents()  
     
-    merge_list= []
-    for i in np.arange(0, len(read_urls)):
-        merge_list.append([users_list, read_urls[i]])   
-        
     
-    #PARALELIZAMOS EMPLEANDO POLL.STARMAP CON TODOS LOS NÚCLUES -1        
-    pool = mp.Pool(mp.cpu_count()-1)
-    #results = pool.starmap(GET_COSMOBOX_URL, [(users_list,read_urls[k], k, 100) for k in np.arange(0,100)])
-    #resuLts= pool.map([GET_COSMOBOX_URL(users_list, read_urls[k]) for k in np.arange(100)])
-
-    #results = pool.map(GET_COSMOBOX_URL, merge_list)    
-    results=[]
-    for _ in tqdm.tqdm(pool.imap_unordered(GET_COSMOBOX_URL, merge_list), total=len(read_urls)):
-        results.append(_)
-        pass
-    #MATAMOS SUBPROCESOS 
-    pool.close()
-    pool.terminate()
-    pool.join()
-    #GUARDAMOS RESULTADOS EN UN CSV
-    file= os.getcwd() + "/urls_cosmo_multi.csv"
-    with open(file, 'wt') as myfile:
-         wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-         for x in np.arange(0,len(results)):
-             wr.writerow([results[x]])
-             
-             
-
-#AL A TAQUE        
-if __name__ == '__main__':
-    main()
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
