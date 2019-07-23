@@ -15,6 +15,7 @@ from selenium.common.exceptions import TimeoutException
 import os
 import csv
 import numpy as np
+import time
 import zipfile
 import requests
 from bs4 import BeautifulSoup
@@ -231,7 +232,7 @@ def LOGIN_COSMOBOX_AND_DOWNLOAD(LISTA_COSMO_URL):
     if pen_drive:
         PATH_DOWNLOAD= PATH_MEDIA + pen_drive[0]
     else: 
-        PATH_DOWNLOAD= os.getcwd()
+        PATH_DOWNLOAD= os.getcwd() + '/DESCARGAS_COSMOBOX'
     
     profile = webdriver.FirefoxProfile()
     profile.set_preference('browser.download.folderList', 2) 
@@ -300,9 +301,16 @@ def LOGIN_COSMOBOX_AND_DOWNLOAD(LISTA_COSMO_URL):
             DOWN = WebDriverWait(driver, 5).until(EC.visibility_of_element_located((By.CSS_SELECTOR, css_DOWNLOAD)))
             DOWN.click()
             print('Descargando ' + str(LISTA_COSMO_URL[i]))
-            
-    #driver.close()
-    #driver.quit()
+     
+    time.sleep(10)
+    while True:
+        FILES= os.listdir(PATH_DOWNLOAD)
+        if '.part' in str(FILES):
+            time.sleep(5)
+        else: 
+            break
+    driver.close()
+    driver.quit()
         
     
 
