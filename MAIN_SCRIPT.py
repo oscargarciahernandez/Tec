@@ -6,7 +6,7 @@ Created on Sat Jul 20 13:40:08 2019
 @author: oscar
 """
 
-from libraries_script import DOWNLOAD_ZIP, get_user_agents, set_user_agents, GET_COSMOBOX_URL, GET_ELECTROBUZZ_URLS, GET_ELECTROBUZZ_URLS_BY_SEARCH
+from libraries_script import LOGIN_COSMOBOX_AND_DOWNLOAD, get_user_agents,get_user_agents2, set_user_agents, GET_COSMOBOX_URL, GET_ELECTROBUZZ_URLS, GET_ELECTROBUZZ_URLS_BY_SEARCH
 import os
 import csv
 from selenium import webdriver
@@ -37,7 +37,10 @@ import shutil
 def main(inputlist):
 
     #DESCARGAMOS USER AGENTS 
-    users_list= get_user_agents()
+    try:
+        users_list= get_user_agents()
+    except:
+        users_list= get_user_agents2()
 
     PATH_RUN= 'Run/' 
 
@@ -62,8 +65,9 @@ def main(inputlist):
     ### LEEMOS URL'S DE ELECTROBUZZ
     
     LISTA_ARTISTAS= os.listdir('Run/')
+    LISTA_ELECTROBUZZ= [item for item in LISTA_ARTISTAS if 'electrobuzz' in item ]
     
-    for files in LISTA_ARTISTAS:
+    for files in LISTA_ELECTROBUZZ:
         
         read_urls= []
         file=PATH_RUN + files 
@@ -92,15 +96,16 @@ def main(inputlist):
         #GUARDAMOS RESULTADOS EN UN CSV
         file= PATH_RUN + files.replace('electrobuzz', 'cosmobox')
         with open(file, 'wt') as myfile:
-             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
+             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)    
+
              for x in np.arange(0,len(results)):
-                 wr.writerow([results[x]])
+                 wr.writerows((results[x][0]))
         
         os.remove(PATH_RUN + files)
-                 
-       
+        
     LISTA_COSMOBOX= os.listdir('Run/')
-    for cosmobox in LISTA_COSMOBOX: 
+    
+    for cosmobox in [item for item in LISTA_COSMOBOX if 'cosmobox' in item]: 
 
     # DOWNLOAD COSMOBOX
         cosmo_url= []
@@ -109,13 +114,14 @@ def main(inputlist):
              wx = csv.reader(myfile)
              for x in wx:
                  cosmo_url.append(x)
-                 
-        DOWNLOAD_ZIP(cosmo_url[0][1])
+        ONLY_COSMOBOX_URL= [item for item in cosmo_url if 'cosmobox.org' in str(item)]
+        
+        LOGIN_COSMOBOX_AND_DOWNLOAD(ONLY_COSMOBOX_URL[0:2])
 
-             
+        
              
 
 if __name__ == "__main__":
-    shutil.rmtree('Run/' )
+    #shutil.rmtree('Run/' )
     main(sys.argv[1:])
     
