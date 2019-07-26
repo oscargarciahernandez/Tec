@@ -6,7 +6,7 @@ Created on Sat Jul 20 13:40:08 2019
 @author: oscar
 """
 
-from libraries_script import LOGIN_COSMOBOX_AND_DOWNLOAD, get_user_agents,get_user_agents2, set_user_agents, GET_COSMOBOX_URL, GET_ELECTROBUZZ_URLS, GET_ELECTROBUZZ_URLS_BY_SEARCH
+from libraries_script import UNRAR, UNZIP, FLASH_DRIVE_PATH_DOWNLOAD, LOGIN_COSMOBOX_AND_DOWNLOAD, get_user_agents,get_user_agents2, set_user_agents, GET_COSMOBOX_URL, GET_ELECTROBUZZ_URLS, GET_ELECTROBUZZ_URLS_BY_SEARCH
 import os
 import csv
 from selenium import webdriver
@@ -35,6 +35,27 @@ import shutil
 
 
 def main(inputlist):
+    '''
+    SCRIPT PRINCIPAL QUE SE ENCARGA DE COJER LOS NOMBRES QUE METEMOS COMO ARGUMENTOS
+    BUSCARLOS EN ELECTROBUZZ, LUEGO BUSCAR SU LINK EN ELECTROUZZ Y DESCARGARLOS.
+    
+    HAY UNA FUNCION QUE SE ENCARGA DE ENCONTRAR ALGUN FLAS DRIVE CONECTADO
+    SI ENCUENTRA UN DISPOSITIVO USA EL PRIMERO COMO LUGAR DE LA DESCARGA. SI NO HAY
+    DESCARGA LAS MOVIDAS EN UNA CARPETA JUNTO A ESTE SCRIPT
+    
+    A CONTINUACION PONDREMOS ALGUNAS OPCIONES PARA MODIFICAR EL COMPORTAMIENTO DE ESTE SCRIPT
+    
+    '''
+    
+    
+    DESCARTAR_VAs_Y_BEATPORT= True # SE DESCARTAN TODOS LOS ALBUMES VA Y RECOPILACIONES DE BEATPORT
+    
+    BUSQUEDA_EXTRICTA_ARTISTA= True # SI NO APARECE EL NOMBRE EXTRICTO QUE BUSCAMOS, TAMBIEN SE DESCARTA
+    
+    EXTRAER_ALBUMES_TRAS_DESCARGA= True # EXTRAER ZIPS Y RARS TRAS DESCARGA
+    
+    
+    
 
     #DESCARGAMOS USER AGENTS 
     try:
@@ -42,19 +63,26 @@ def main(inputlist):
     except:
         users_list= get_user_agents2()
 
-    PATH_RUN= 'Run/' 
+    PATH_RUN= 'Run1/' 
 
     if not os.path.exists(PATH_RUN):
         os.mkdir(PATH_RUN)
+        
     #MERGE INPUTS2 FUNCION SEARCH
     for busqueda in inputlist:
         
         
         print('BUSQUEDA ELECTROBUZZ PARA ', busqueda.replace(",", "").replace("_", " ").upper())
-        busqueda= busqueda.replace(",", "").replace("_", " ")
-        merge_list2= [users_list, busqueda]
         
-        results_merge= GET_ELECTROBUZZ_URLS_BY_SEARCH(merge_list2, REMOVE_VA_and_BEATPORT=True, EXTRICT_ARTIST=True)
+        
+        busqueda= busqueda.replace(",", "").replace("_", " ")
+        
+       
+        results_merge= GET_ELECTROBUZZ_URLS_BY_SEARCH( [users_list, busqueda], REMOVE_VA_and_BEATPORT=DESCARTAR_VAs_Y_BEATPORT, EXTRICT_ARTIST=BUSQUEDA_EXTRICTA_ARTISTA)
+        
+        
+        
+        
         file= PATH_RUN + "/urls_electrobuzz_" + busqueda.replace(" ", "_") + ".csv"
         with open(file, 'wt') as myfile:
              wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
@@ -64,7 +92,7 @@ def main(inputlist):
 
     ### LEEMOS URL'S DE ELECTROBUZZ
     
-    LISTA_ARTISTAS= os.listdir('Run/')
+    LISTA_ARTISTAS= os.listdir(PATH_RUN)
     LISTA_ELECTROBUZZ= [item for item in LISTA_ARTISTAS if 'electrobuzz' in item ]
     
     for files in LISTA_ELECTROBUZZ:
@@ -81,6 +109,8 @@ def main(inputlist):
             merge_list.append([users_list, read_urls[i]])   
         
         print('\n BUSCANDO LINK COSMOBOX PARA ', files.replace("urls_electrobuzz_", "").replace(".csv", "").upper())
+        
+        
         #PARALELIZAMOS EMPLEANDO POLL.STARMAP CON TODOS LOS NÚCLUES -1        
         pool = mp.Pool(mp.cpu_count()-1)
        
@@ -99,11 +129,11 @@ def main(inputlist):
              wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)    
 
              for x in np.arange(0,len(results)):
-                 wr.writerows((results[x][0]))
+                 wr.writerow((results[x][1]))
         
-        os.remove(PATH_RUN + files)
+        #os.remove(PATH_RUN + files)
         
-    LISTA_COSMOBOX= os.listdir('Run/')
+    LISTA_COSMOBOX= os.listdir(PATH_RUN)
     
     for cosmobox in [item for item in LISTA_COSMOBOX if 'cosmobox' in item]: 
 
@@ -116,12 +146,20 @@ def main(inputlist):
                  cosmo_url.append(x)
         ONLY_COSMOBOX_URL= [item for item in cosmo_url if 'cosmobox.org' in str(item)]
         
-        LOGIN_COSMOBOX_AND_DOWNLOAD(ONLY_COSMOBOX_URL[0:2])
+        
+        PATH_TO_DOWNLOAD= FLASH_DRIVE_PATH_DOWNLOAD()
+        
+        if ONLY_COSMOBOX_URL: 
+            LOGIN_COSMOBOX_AND_DOWNLOAD(ONLY_COSMOBOX_URL, PATH_TO_DOWNLOAD)
 
         
-             
+        if EXTRAER_ALBUMES_TRAS_DESCARGA:
+            print('\nEXTRAYENDO DESCARGAS EN ' + PATH_TO_DOWNLOAD)
+            UNRAR(PATH_TO_DOWNLOAD)
+            UNZIP(PATH_TO_DOWNLOAD)
+         
 
 if __name__ == "__main__":
-    #shutil.rmtree('Run/' )
+    shutil.rmtree('Run1/' )
     main(sys.argv[1:])
     

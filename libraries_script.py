@@ -16,18 +16,26 @@ import os
 import csv
 import numpy as np
 import time
-import zipfile
 import requests
 from bs4 import BeautifulSoup
 import random
 import re
+import shutil
+from difflib import SequenceMatcher
+import rarfile
+import zipfile
+
+
+
+
+# SIN USO AKI PERO NECESARIOS EN MAIN_SCRIPT
+# ERÁ NECESARIO HACER MÁS FUNCIONES Y QUE EL MAIN SCRIPT ESTÉ MÁS LIMPIO
+import sys
+from datetime import date
 import csv    
 import tqdm
 import multiprocessing as mp
 from  itertools import chain
-from datetime import date
-import sys
-
 #DESCARGAR PEDAZO DE LISTA DE USER AGENTS 
 
 def get_user_agents2():
@@ -90,6 +98,11 @@ def GET_ELECTROBUZZ_URLS(merge_inputs):
             fail=fail+1
             if fail>10:
                 break
+    
+    lista_nombres= []
+    for nombres in lista_busquedaF:
+        lista_nombres.append(nombres.split('/')[-2])   
+           
 
             
             
@@ -99,7 +112,6 @@ def GET_ELECTROBUZZ_URLS(merge_inputs):
     m1 = list(set(m))
     return m1
 
-from difflib import SequenceMatcher
 def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
     
@@ -150,7 +162,23 @@ def GET_ELECTROBUZZ_URLS_BY_SEARCH(merge_inputs2, REMOVE_VA_and_BEATPORT= True, 
                     lista_nombres.remove(item)
     
     if EXTRICT_ARTIST:
+        '''
+        METODO 1
+        
+        BUSCA SIMILARIDAD ENTRE EN EL INPUT Y EL NOMBRE DEL ALBUM
+        '''
+        
         LISTA_SOLO_BUSQUEDA= [item for item in lista_nombres for item2 in item.split("-") for item3 in merge_inputs2[1].split(" ") if similar(item3.lower(), item2)> 0.8]
+        
+        '''
+        METODO 2
+        
+        MIRA QUE NUESTRA BUSQUEDA SE ENCUENTRE EXTRICTAMENTE DENTRO DEL NOMBRE DEL ALBUM
+        
+        LISTA_SOLO_BUSQUEDA= [item for item in lista_nombres if busqueda.replace(' ', "-").lower() in item ]
+
+        '''
+        
     else:
         LISTA_SOLO_BUSQUEDA=lista_nombres
         
@@ -191,6 +219,7 @@ def GET_COSMOBOX_URL(merge_inputs):
         except:
             pass
         #print('invalid UserAgent')
+        
         fail=fail+1
         if fail>10:
             break
@@ -224,15 +253,7 @@ def GET_COSMOBOX_URL(merge_inputs):
     return Contenido
 
 
-def LOGIN_COSMOBOX_AND_DOWNLOAD(LISTA_COSMO_URL):
-    
-    PATH_MEDIA= '/media/oscar/'
-    pen_drive= os.listdir(PATH_MEDIA)
-    
-    if pen_drive:
-        PATH_DOWNLOAD= PATH_MEDIA + pen_drive[0]
-    else: 
-        PATH_DOWNLOAD= os.getcwd() + '/DESCARGAS_COSMOBOX'
+def LOGIN_COSMOBOX_AND_DOWNLOAD(LISTA_COSMO_URL, PATH_DOWNLOAD):
     
     profile = webdriver.FirefoxProfile()
     profile.set_preference('browser.download.folderList', 2) 
@@ -289,18 +310,27 @@ def LOGIN_COSMOBOX_AND_DOWNLOAD(LISTA_COSMO_URL):
     ###TRAS REGISTRARNOS ABRIMOS UNA VENTANA NUEVA, PARA EMPEZAR A DESCARBGAR MOVIDAS
     driver.execute_script("window.open('');")
     driver.switch_to.window(driver.window_handles[1])
+    
     for i in range(len(LISTA_COSMO_URL)):
         p=re.sub('[\[\]\'\"]','', str(LISTA_COSMO_URL[i]))
         driver.get(p)
         
+        
+        #TRY PARA ASEGURARNOS DE QUE EXISTE EL ARCHIVO
+        # EN COSMOBOX HAY MUCHOS ARCHIVOS CAIDOS QUE YA NO EXISTEN
         try: 
-            WebDriverWait(driver, 1).until(EC.visibility_of_element_located((By.CSS_SELECTOR, '.text-danger')))
+            
+            WebDriverWait(driver, 2).until(EC.visibility_of_element_located((By.CSS_SELECTOR, '.text-danger')))
             print('ERROR 404: YA NO EXISTE EL ARCHIVO')
         except TimeoutException:
+            
+            #SI EL ARCHIVO EXISTE LO DESCARGAMOS Y LISTO
             css_DOWNLOAD= 'div.col-md-12:nth-child(10) > button:nth-child(1)'
             DOWN = WebDriverWait(driver, 5).until(EC.visibility_of_element_located((By.CSS_SELECTOR, css_DOWNLOAD)))
             DOWN.click()
             print('Descargando ' + str(LISTA_COSMO_URL[i]))
+            
+            
      
     time.sleep(10)
     while True:
@@ -311,6 +341,59 @@ def LOGIN_COSMOBOX_AND_DOWNLOAD(LISTA_COSMO_URL):
             break
     driver.close()
     driver.quit()
-        
+    BORRAR_ARCHIVOS_REPETIDOS(PATH_DOWNLOAD)
     
 
+        
+def LIMPIAR_CARPETA(PATH_CARPETA):
+    shutil.rmtree(PATH_CARPETA)
+    
+    
+def BORRAR_ARCHIVOS_REPETIDOS(PATH_DOWNLOAD):
+    
+    #BORRAMOS LAS DESCARGAS REPETIDAS
+    REPEATED_FILES= [item for item in os.listdir(PATH_DOWNLOAD) if '(1).' in item or '(2).' in item or '(3).' in item ]
+    for i in REPEATED_FILES:
+        os.remove(PATH_DOWNLOAD + '/' + i)
+
+
+
+
+
+
+#UNZIPINGGGG
+        
+def FLASH_DRIVE_PATH_DOWNLOAD():
+    PATH_MEDIA= '/media/oscar/'
+    pen_drive= os.listdir(PATH_MEDIA)
+    
+    if pen_drive:
+        PATH_DOWNLOAD= PATH_MEDIA + pen_drive[0] + '/DESCARGAS_COSMOBOX'
+    else: 
+        PATH_DOWNLOAD= os.getcwd() + '/DESCARGAS_COSMOBOX'
+    
+    return PATH_DOWNLOAD
+
+
+def UNZIP(PATH_ZIP): 
+    
+    for i in [item for item in os.listdir(PATH_ZIP) if '.zip' in item]:
+        PATH_TO_ZIP_FILE= PATH_ZIP + i
+        with zipfile.ZipFile(PATH_TO_ZIP_FILE, 'r') as zip_ref:
+            zip_ref.extractall(PATH_ZIP)
+
+
+
+def UNRAR(PATH_RAR):
+    for rar in [item for item in os.listdir(PATH_RAR) if '.rar' in item]:
+        filepath = os.path.join(PATH_RAR, rar)
+        opened_rar = rarfile.RarFile(filepath)
+        
+        '''
+        # POR SI QUEREMOS SACAR INFORMACION CONTENIDAD EN EL RAR
+        # NOMBRE DE FICHEROS Y TAMAINO
+        for f in opened_rar.infolist():
+            print (f.filename, f.file_size)
+            
+        '''
+        opened_rar.extractall(filepath.replace('.rar', ''))
