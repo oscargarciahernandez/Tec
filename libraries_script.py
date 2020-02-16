@@ -168,16 +168,17 @@ def GET_ELECTROBUZZ_URLS_BY_SEARCH(merge_inputs2, REMOVE_VA_and_BEATPORT= True, 
         BUSCA SIMILARIDAD ENTRE EN EL INPUT Y EL NOMBRE DEL ALBUM
         '''
         
-        LISTA_SOLO_BUSQUEDA= [item for item in lista_nombres for item2 in item.split("-") for item3 in merge_inputs2[1].split(" ") if similar(item3.lower(), item2)> 0.8]
+        #LISTA_SOLO_BUSQUEDA= [item for item in lista_nombres for item2 in item.split("-") for item3 in merge_inputs2[1].split(" ") if similar(item3.lower(), item2)> 0.8]
         
         '''
         METODO 2
         
         MIRA QUE NUESTRA BUSQUEDA SE ENCUENTRE EXTRICTAMENTE DENTRO DEL NOMBRE DEL ALBUM
         
+        '''
         LISTA_SOLO_BUSQUEDA= [item for item in lista_nombres if busqueda.replace(' ', "-").lower() in item ]
 
-        '''
+        
         
     else:
         LISTA_SOLO_BUSQUEDA=lista_nombres
@@ -374,6 +375,21 @@ def FLASH_DRIVE_PATH_DOWNLOAD():
     
     return PATH_DOWNLOAD
 
+
+
+def BORRAR_ARCHIVOS_CORRUPTOS(PATH):  
+    '''
+    ELIMINAMOS .part POR POSIBLES ERRORES DE EJECUCIONES PASADAS
+    QUE VAYAN A AFECTAR A LA FUNCION DE DESCARGA.... QUE ESPERA 
+    HASTA QUE NO EXISTAN .PARTS... ES DECIR HASTA QUE TODAS LAS DESCARGAS
+    ESTEN COMPLETAS
+    
+    '''
+    FILES= os.listdir(PATH)
+    PART_FILES = [item for item in FILES if '.part' in item]
+    for i in PART_FILES:
+        os.remove(PATH + '/'+i)
+            
 
 def UNZIP(PATH_ZIP): 
     

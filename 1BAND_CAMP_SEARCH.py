@@ -23,7 +23,9 @@ from mutagen.id3 import TPE1, TIT2, TRCK, TALB, APIC, TYER
 import re
 import requests
 import html
-
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import numpy as np
 
 
 def abestia_jaitsi(url):       
@@ -224,17 +226,23 @@ def karaktereak_filtratu(path):
        path=re.sub(pattern, '', path)
        return(path)
 
+def BAND_CAMP_SEARCH(INPUT, MODO=1):
+    '''
+    INPUT es un string para introducir en la busqueda
+    MODO=1 : BUSCA ALBUMS, ARTISTAS/LABELS Y CANCIONES
+    MODO=2 : SOLO ARTISTAS. EN BANDCAMP NO HAY DISTINCION ENTRE LABELS Y ARTISTAS
+    MODO=3= SOLO ALBUMS
+    MODO=4 : SOLO CANCIONES
+    
+    '''
+    
+    LIST_album= []
+    LIST_track= []
+    LIST_artist= []
 
-
-
-
-def main():
-    #URL DE LA DE BUSQUEDA
-    while True: 
-        print('INTRODUCE NOMBRE DEL ARTISTA: \n')
-        INPUT = str(input())
-        URL_BUSQUEDA= 'https://bandcamp.com/search?q='
-        BUSQUEDA=URL_BUSQUEDA +  INPUT
+    pages= 1
+    while True:
+        BUSQUEDA='https://bandcamp.com/search?page={}&q='.format(pages) + INPUT
         
         
         #INICIAMOS SESION REQUEST
@@ -245,103 +253,307 @@ def main():
         #PARSEANDO HTML
         user_soup = BeautifulSoup(user_agents.content, 'html.parser')
         
-        
         #OBTENEMOS GRUPOS DISPONIBLES
-        user_soup1=user_soup.find_all('li' , class_='searchresult band')
-        GROUPS= []
-        for i in range(len(user_soup1)):        
-            GROUP_NAME=  user_soup1[i].find_all('div', class_= 'heading')[0].find('a').contents[0].replace("\n", "").strip()
-            GENRE= user_soup1[i].find_all('div', class_= 'genre')[0].contents[0].replace("\n", "").strip()
-            LINK= user_soup1[i].find_all('div', class_= 'itemurl')[0].find_all('a')[0].contents[0].replace("\n", "").strip()
+        soup_album= user_soup.find_all('li' , class_='searchresult album')
+        soup_track=user_soup.find_all('li' , class_='searchresult track')
+        soup_band=user_soup.find_all('li' , class_='searchresult band')
+        
+        
+
+        if len(soup_album)+len(soup_track)+len(soup_band)==0:
+            break
+        
+        LIST_album.append(soup_album)
+        LIST_track.append(soup_track)
+        LIST_artist.append(soup_band)
+        pages += 1
     
-            GROUPS.append([GROUP_NAME, LINK, GENRE])
-            
+    
+    
+    TRACKS= list(chain(*LIST_track))
+    ALBUMS= list(chain(*LIST_album))
+    ARTISTS_LABELS= list(chain(*LIST_artist))
+
+    print('Se han encontrado ' + str(len(TRACKS)) + ' canciones, ' + str(len(ALBUMS)) + ' Albums y ', str(len(ARTISTS_LABELS)) + ' Artistas o labels')
+    
+    if MODO==1:
+        LISTA_RETURN= [TRACKS, ALBUMS, ARTISTS_LABELS]
+    elif MODO==2:
+        LISTA_RETURN = ARTISTS_LABELS
+    elif MODO== 3:
+        LISTA_RETURN= ALBUMS
+    elif MODO== 4:
+        LISTA_RETURN= TRACKS
+    else:
+        LISTA_RETURN= []
+        print('MODO INCORRECTO')
+    
+    return LISTA_RETURN
+
+def FIND_INFO_BANDCAMP_ELEMENT(LISTA_TODO, DISPLAY_IMG= False):
+    '''
+    A ESTA FUNCION SE LE METE DIRECTAMENTE LA LISTA PROPORCIONADA POR
+    BANDCAMP_SEARCH Y LO QUE HACE ES BUSCAR INFORMACION DE CADA ELEMENTO
+    DEVUELVE UN DICCIONARIO CON LA INFO DE CADA ELEMENTO
+    
+    PODEMOS ELEGIR SI QUEREMOS SACAR POR CONSOLA LLA IMAGEN DE LA CARATULA
+    '''
+    
+
+    GROUPS= []
+    if isinstance(LISTA_TODO, list):
+        if isinstance(LISTA_TODO[0], list):
+            LISTA_ITER =  list(chain(*LISTA_TODO))
+        else:
+            LISTA_ITER= LISTA_TODO
+    else:
+        LISTA_ITER= [LISTA_TODO]
+
+    for ELEMENT in LISTA_ITER:
         
+        ATTRS_DICT= [item.attrs for item in ELEMENT.find_all('div')]
+        INFO_DICT= {}
+        for j in range(len(ATTRS_DICT)):
+            CLASE= ATTRS_DICT[j]['class']
+            if CLASE:
+                try:
+                    INFO= ELEMENT.find_all('div', class_= CLASE[0])[0].contents[0].replace("\n", "").strip()
+                    if not INFO:
+                        try:
+                            INFO= ELEMENT.find_all('div', class_= CLASE[0])[0].find('a').contents[0].replace("\n", "").strip()
+                        except:
+                            pass
+                            if not INFO:
+                                try:
+                                    INFO= ELEMENT.find_all('div', class_= CLASE[0])[0].find('img').attrs['src']
+                                except:
+                                    pass
+                    INFO_DICT[CLASE[0]]= INFO
+                except:
+                    pass
+                                                
+        if DISPLAY_IMG:
+            for dicts in INFO_DICT.keys():
+                JPG= INFO_DICT[dicts]
+                if '/img/' in JPG:
+                    r = requests.get(JPG, allow_redirects=True)
+                    open('cover.jpg', 'wb').write(r.content) 
+                    img=mpimg.imread('cover.jpg')
+                    plt.imshow(img)
+                    plt.axis('off')
+                    plt.show()
+                if re.match(r'(itemtype|heading|itemurl)', dicts):
+                    print(INFO_DICT[dicts])
+
         
+
+        GROUPS.append(INFO_DICT)
+    return GROUPS
             
+def LOOK_FOR_TRACKS_AND_ALBUMS(BS4_ELEMENT):
+    '''
+    INTROUDCIMOS UN ELEMENTO BS4 Y DEVUELVE 
+    LOS LINKS DE ALBUMES Y LAS CANCIONES
+    '''
+    LINKS_BS4= []
+    for a in BS4_ELEMENT.find_all('a', href=True):
+        LINKS_BS4.append(a['href'])
+        
+    ALBUMS =[s for s in LINKS_BS4 if "/album/" in s]
+    #ALBUMS = [s for s in ALBUMS if "/album/" in s]
+    ALBUMS= list(dict.fromkeys(ALBUMS))
+    SONGS = [s for s in LINKS_BS4 if "/track/" in s] #[s for s in LINKS_BS4 if not "https://" in s]
+    #SONGS = [s for s in SONGS if "/track/" in s]
+    SONGS= list(dict.fromkeys(SONGS))
+    
+    return {'ALBUMS': ALBUMS, 'TRACKS': SONGS}
+
+                                
+        
+
+def main():
+    #URL DE LA DE BUSQUEDA
+    while True: 
+        print('INTRODUCE NOMBRE DEL ARTISTA: \n')
+        INPUT = str(input())
+       
+        LISTA_TODO= BAND_CAMP_SEARCH(INPUT, MODO=1)
+                
+
         #SELECIONAMOS GRUPOS QUE QUEREMOS
+        GROUPS= FIND_INFO_BANDCAMP_ELEMENT(LISTA_TODO)
+       
         
+        '''
+        AHORA HACEMOS UN DISPLAY Y SELECCION DE LO ENCOTRADO EN LA 
+        BUSQUEDA BANDCAMP
+        '''
         print('SELECCIONA GRUPO INTRODUCIENDO EL NUMERO A SU IZQUIERDA: \n')
             
         k=0
         for sublist in GROUPS:
             
-            print(str(k) + ') ' + sublist[0] + "------>" + sublist[2])
+            REST_OF_DESCRIPTIOIN= '---'.join([sublist[item].replace('  ','') for item in sublist.keys() if item in ['result-info', 'heading', 'genre'] ])
+            LEN_DES= len(REST_OF_DESCRIPTIOIN) + len(sublist['itemtype'])
+            if LEN_DES>79:
+                NEXO= '-'
+            else:
+                NEXO= ''.join(np.tile('-', 80-LEN_DES))
+            
+            print(str(k) + ')--' + sublist['itemtype'] +NEXO +REST_OF_DESCRIPTIOIN)
             k=k+1
         print(str(k) + ') CAMBIAR BUSQUEDA')
-        GRUPO_SELECT = int(input('Enter numbers: '))
-
-        if GRUPO_SELECT==int(k):
+        #GRUPO_SELECT = (input('INTRODUCE LOS NUMEROS SEPARADOS POR 1 ESPACIO: '))
+        
+        GRUPO_SELECT= list(map(int, input('Enter numbers: ').split()))
+        
+        
+        if int(k) in GRUPO_SELECT:
+            SELECTION= False
             pass
-        else: 
+        else:
+            SELECTION= True
             break
-               
-           
-           
-           
-           
     
-           
-     
-    url= GROUPS[GRUPO_SELECT][1]
-    #MIRAMOS LOS ALBUMES DE ESE ARTISTA 
-    user_agents= session.get(url)
-    user_soup = BeautifulSoup(user_agents.content, 'html.parser')
-    
-    ALL_LINKS= []
-    for a in user_soup.find_all('a', href=True):
-        ALL_LINKS.append(a['href'])
+    '''
+     EN BASE A LA SELECCION REALIZAMOS LA DESCARGA
+    '''
+    if SELECTION:
+        SELECIONES= GRUPO_SELECT       
         
-    ALBUMS = [s for s in ALL_LINKS if not "https://" in s]
-    ALBUMS = [s for s in ALBUMS if "/album/" in s]
-    ALBUMS= list(dict.fromkeys(ALBUMS))
-    
-    if len(ALBUMS)==0:
-        print("NO HAY ALBUMES DISPONIBLES...")
-        SONGS = [s for s in ALL_LINKS if not "https://" in s]
-        SONGS = [s for s in SONGS if "/track/" in s]
-        SONGS= list(dict.fromkeys(SONGS))
-        print('HAY DISP0NIBLE: ' + str(len(SONGS)) + " cancion(es)")
-        print('¿DESCARGAR CANCION(ES) DISPONIBLE(S)?(y/n): \n')
-        
-        GRUPO_SELECT = str(input(' '))
-        if GRUPO_SELECT=='y':
-            for i in range(len(SONGS)):
-                print("DESCARGANDO CACION: " + SONGS[i].replace('/track/', ""))
-                path= song_jaitsi((url + str(SONGS[i])))
+        for SELECT in SELECIONES:
+            url= GROUPS[SELECT]['itemurl']
+            
+            if '/track/' in url:
+                print("DESCARGANDO CACION: " + url.replace('/track/', ""))
+                path= song_jaitsi(url)
                 print("CANCION DESCARGADA EN : " +  path)
+            elif '/album/' in url:
+                print("DESCARGANDO ALBUM: " + url.replace('/track/', ""))
+                path=albuma_jaitsi(url)
+                print("ALBUM DESCARGADA EN : " +  path)
+                    
+            else:          
+                while url:
+                    '''
+                    SI LA URL ES DE UN ARTISTA O LABEL
+                    MIRAMOS DENTRO A VER QUE ENCONTRAMOS                    
+                    
+                    '''
+                    
+                    CANALES_EXTERNOS= []
+                    url = url if isinstance(url, list) else [url]
+                    for url_artista in url:
+                        #MIRAMOS LOS ALBUMES DE ESE ARTISTA 
+                        session = requests.Session()
+                        session.trust_env = False
+                        user_agents= session.get(url_artista)
+                        user_soup = BeautifulSoup(user_agents.content, 'html.parser')
+                        
+                        
+                        '''
+                        SEPARAMOS EL APARTADO DE RECOMENDACIONES DEL RESTO DE 
+                        ALBUMS DE LA PAGINA. 
+                        '''
+                        try:
+                            
+                            RECOMENDACIONES= LOOK_FOR_TRACKS_AND_ALBUMS(user_soup.find('div',  {'class':'recommendations-container'}))
+                            user_soup.find('div',  {'class':'recommendations-container'}).decompose()
+                        except:
+                            print('NO HAY RECOMENDACIONES')
+      
+                        
+                        '''
+                        AKI SACAMOS ALBUMES Y CANCIONES DEL ARTISTA EN CUESTION 
+                        '''
+                        
+                        ALBUMS_TRACKS= LOOK_FOR_TRACKS_AND_ALBUMS(user_soup)
+                        ALBUMS= ALBUMS_TRACKS['ALBUMS']
+                        SONGS= ALBUMS_TRACKS['TRACKS']
+                        
+                        '''
+                        DESPUES DE MIRAR DENTRO DEL CANAL VEMOS SI EXISTEN ALBUMES
+                        SI NO EXISTEN ALBUMES MIRAMOS A VER QUE CANCIONES HAY
+                        
+                        '''
+                        
+                        if len(ALBUMS)==0:
+                            print("NO HAY ALBUMES DISPONIBLES...")
+                            if len(SONGS)==0:
+                                print('TAMPOCO HAY CANCIONES DISPONIBLES')
+                            else:
+                                print('HAY DISP0NIBLE: ' + str(len(SONGS)) + " cancion(es)")
+                                print('¿DESCARGAR CANCION(ES) DISPONIBLE(S)?(y/n): \n')
+                            
+                                GRUPO_SELECT = str(input(' '))
+                                if GRUPO_SELECT=='y':
+                                    for i in range(len(SONGS)):
+                                        print("DESCARGANDO CACION: " + SONGS[i].replace('/track/', ""))
+                                        path= song_jaitsi((url_artista + str(SONGS[i])))
+                                        print("CANCION DESCARGADA EN : " +  path)
+                    
+                                    
+                                else: None
+                        else: 
+                            
+                            print('SELECCIONA ALBUM INTRODUCIENDO EL NUMERO A SU IZQUIERDA: \n')
+                            k=0
+                            for sublist in ALBUMS:
+                                nombre_album= sublist.replace('/album/', "")
+                                print(str(k) + ') ' + nombre_album )
+                                k=k+1
+                            print(str(k) + ') TODOS LOS ALBUMS')
+                            print(str(k+1) + ') NINGUNO')
+                            GRUPO_SELECT = list(map(int, input('Enter numbers: ').split()))
+                           
+                            if GRUPO_SELECT[0]==int(k)+1:
+                                break
+                                
+                            if GRUPO_SELECT[0]==int(k):     
+                                for i in range(len(ALBUMS)):
+                                    if 'https://' in ALBUMS[i]:
+                                        url_ALBUM= ALBUMS[i]
+                                        print("DESCARGANDO ALBUM: ", ALBUMS[i].replace('/album/', ""))
+                                    else:
+                                        url_ALBUM= url_artista.split("?")[0] + ALBUMS[i]
+                                        print("DESCARGANDO ALBUM: ", ALBUMS[i].replace('/album/', ""))
+                            
+                                    path_descarga= albuma_jaitsi(url_ALBUM)
+                                    print("ALBUM DESCARGADO EN : " +  path_descarga)
+                        
+                            else:     
+                                for i in GRUPO_SELECT:
+                                    if 'https://' in ALBUMS[i]:
+                                        url_ALBUM= ALBUMS[i]
+                                        print("DESCARGANDO ALBUM: ", ALBUMS[i].replace('/album/', ""))
+                                    else:
+                                        url_ALBUM= url_artista.split("?")[0] + ALBUMS[i]
+                                        print("DESCARGANDO ALBUM: ", ALBUMS[i].replace('/album/', ""))
+                            
+                                    path_descarga= albuma_jaitsi(url_ALBUM)
+                                    print("ALBUM DESCARGADO EN : " +  path_descarga)
+                            
+                            
+                            for i in range(len(ALBUMS)):
+                                if 'https://' in ALBUMS[i]:
+                                    CANALES_EXTERNOS.append(ALBUMS[i])
+                            
+                    url= None     
+                            
+                    if not len(CANALES_EXTERNOS)==0:
+                        print('EN ESTE/OS CANAL/ES HAY REFERENCIAS A CANALES EXTERNOS')
+                        print('¿INVESTIGAMOS ESOS CANALES?(y/n): \n')
 
-                
-        else: None
-    else: 
-    
-        print('SELECCIONA ALBUM INTRODUCIENDO EL NUMERO A SEGUIR DESCARGANDOSU IZQUIERDA: \n')
-        k=0
-        for sublist in ALBUMS:
-            nombre_album= sublist.replace('/album/', "")
-            print(str(k) + ') ' + nombre_album )
-            k=k+1
-        print(str(k) + ') TODOS LOS ALBUMS')
-        GRUPO_SELECT = list(map(int, input('Enter numbers: ').split()))
-        
-        if GRUPO_SELECT[0]==int(k):     
-            for i in range(len(ALBUMS)):
-                url_ALBUM= url.split("?")[0] + ALBUMS[i]
-                print("DESCARGANDO ALBUM: ", ALBUMS[i].replace('/album/', ""))
-    
-                path_descarga= albuma_jaitsi(url_ALBUM)
-                print("ALBUM DESCARGADO EN : " +  path_descarga)
-    
-        else:     
-            for i in GRUPO_SELECT:
-                url_ALBUM= url.split("?")[0] + ALBUMS[i]
-                print("DESCARGANDO ALBUM: " + ALBUMS[i].replace('/album/', ""))
-    
-                path_descarga= albuma_jaitsi(url_ALBUM)
-                print("ALBUM DESCARGADO EN : " +  path_descarga)
+                        GRUPO_SELECT = str(input(' '))
+                        if GRUPO_SELECT=='y':
+                            url= [item.split('bandcamp.com')[0] + 'bandcamp.com'  for item in CANALES_EXTERNOS]
+                        else: 
+                            break
+                        
 
-    
-    
+
+                             
+
                 
 
 #AL ATAQUE        
